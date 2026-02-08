@@ -101,6 +101,70 @@ app.get("/api/chats", httpAuth, async (req, res) => {
   }
 });
 
+app.get("/api/messages/:userId", httpAuth, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    if (!userId) {
+      return res.status(400).json({ message: "Missing userId" });
+    }
+
+    const messages = await Message.find({
+      $or: [
+        { sender: req.user.id, receiver: userId },
+        { sender: userId, receiver: req.user.id },
+      ],
+    })
+      .sort({ createdAt: 1 })
+      .populate("sender", "username email")
+      .populate("receiver", "username email");
+
+    return res.json({ messages });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
+app.post("/api/messages", httpAuth, async (req, res) => {
+  try {
+    const { receiverId, content } = req.body || {};
+    if (!receiverId || !content) {
+      return res.status(400).json({ message: "Missing fields" });
+    }
+
+    const message = await Message.create({
+      sender: req.user.id,
+      receiver: receiverId,
+      content,
+    });
+
+    const fullMessage = await Message.findById(message._id)
+      .populate("sender", "username email")
+      .populate("receiver", "username email");
+
+    return res.status(201).json({ message: fullMessage });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
+app.get("/api/users", httpAuth, async (req, res) => {
+  try {
+    const users = await User.find({ _id: { $ne: req.user.id } }).select(
+      "_id username email",
+    );
+    return res.json({ users });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
+app.get("/api/userId", httpAuth, (req, res) => {
+  return res.json({ userId: req.user.id });
+});
+
 const io = new Server(server, {
   cors: { origin: "*" },
 });
