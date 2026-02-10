@@ -37,10 +37,11 @@ const Signup = () => {
   };
 
   return (
-    <div>
-      <div>
+    <div className="flex items-center justify-center h-dvh flex-col w-75 m-auto gap-3 p-3">
+      <div className="w-full">
         <label htmlFor="username">Username</label>
         <input
+          className="border border-gray-400 rounded-sm w-full p-2 focus:outline-orange-200"
           type="text"
           id="username"
           name="username"
@@ -48,9 +49,10 @@ const Signup = () => {
           onChange={(e) => setName(e.target.value)}
         />
       </div>
-      <div>
+      <div className="w-full">
         <label htmlFor="email">Email</label>
         <input
+          className="border border-gray-400 rounded-sm w-full p-2 focus:outline-orange-200"
           type="email"
           id="email"
           name="email"
@@ -58,9 +60,10 @@ const Signup = () => {
           onChange={(e) => setEmail(e.target.value)}
         />
       </div>
-      <div>
+      <div className="w-full">
         <label htmlFor="password">Password</label>
         <input
+          className="border border-gray-400 rounded-sm w-full p-2 focus:outline-orange-200"
           type="password"
           id="password"
           name="password"
@@ -68,7 +71,12 @@ const Signup = () => {
           onChange={(e) => setPasword(e.target.value)}
         />
       </div>
-      <button onClick={hanldeClick}>Sign Up</button>
+      <button
+        onClick={hanldeClick}
+        className="p-3 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors w-full font-bold"
+      >
+        Sign Up
+      </button>
     </div>
   );
 };

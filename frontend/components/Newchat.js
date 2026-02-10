@@ -1,35 +1,14 @@
 import React, { useEffect, useState } from "react";
 
-const Newchat = ({ setNewChatToFalse, setActiveChat }) => {
-  const [people, setPeople] = useState([]);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await fetch("http://localhost:5000/api/users", {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        });
-        if (!res.ok) throw new Error(res.status);
-        const data = await res.json();
-        setPeople(data.users);
-      } catch (error) {
-        alert(error.message);
-      }
-    };
-    fetchData();
-  }, []);
-
+const Newchat = ({ setNewChatToFalse, setActiveChat, people }) => {
   return people.length === 0 ? (
-    <h1 className="w-3/12 p-2">Loading...</h1>
+    <h1 className="w-3/12 p-2 fixed top-25">Loading...</h1>
   ) : (
-    <div className="w-3/12 p-2">
+    <div className="w-3/12 fixed top-25 p-2 overflow-y-auto h-screen">
       <div onClick={setNewChatToFalse}>Go Back</div>
       {people.map((person) => (
-        <h1
+        <div
+          className="p-4 hover:bg-gray-200 rounded-sm w-full cursor-pointer transition-colors"
           key={person._id}
           onClick={() =>
             setActiveChat({
@@ -40,7 +19,7 @@ const Newchat = ({ setNewChatToFalse, setActiveChat }) => {
           }
         >
           {person.username}
-        </h1>
+        </div>
       ))}
     </div>
   );

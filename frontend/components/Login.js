@@ -3,7 +3,7 @@ import { useNavigate } from "react-router";
 
 const Login = () => {
   const [email, setEmail] = useState("");
-  const [password, setPasword] = useState("");
+  const [password, setPassword] = useState("");
   const navigate = useNavigate();
 
   const handleClick = async (e) => {
@@ -35,28 +35,37 @@ const Login = () => {
   };
 
   return (
-    <div>
-      <div>
+    <div className="flex items-center justify-center h-dvh flex-col w-75 m-auto gap-3 p-3">
+      <div className="w-full">
         <label htmlFor="email">Email</label>
         <input
+          className="border border-gray-400 rounded-sm w-full p-2 focus:outline-orange-200"
           type="email"
           id="email"
           name="email"
+          placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
       </div>
-      <div>
+      <div className="w-full">
         <label htmlFor="password">Password</label>
         <input
+          className="border border-gray-400 rounded-sm w-full p-2 focus:outline-orange-200"
           type="password"
           id="password"
           name="password"
           value={password}
-          onChange={(e) => setPasword(e.target.value)}
+          placeholder="Password"
+          onChange={(e) => setPassword(e.target.value)}
         />
       </div>
-      <button onClick={handleClick}>Login</button>
+      <button
+        className="p-3 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors w-full font-bold"
+        onClick={handleClick}
+      >
+        Login
+      </button>
     </div>
   );
 };
