@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import Newchat from "./Newchat";
 import ChatSpace from "./ChatSpace";
+import { BsThreeDotsVertical } from "react-icons/bs";
+import { useNavigate } from "react-router";
 
 const Chat = () => {
   const [chats, setChats] = useState(null); // List of chats
@@ -9,6 +11,9 @@ const Chat = () => {
   const [userId, setUserId] = useState(null);
   const [search, setSearch] = useState("");
   const [people, setPeople] = useState([]);
+  const [logoutToggle, setLogoutToggle] = useState(false);
+  const navigate = useNavigate();
+  const lastMessages = {};
   const alreadyEncounteredIds = [];
   const friends = !chats
     ? []
@@ -18,12 +23,14 @@ const Chat = () => {
             return undefined;
           }
           alreadyEncounteredIds.push(chat.sender._id);
+          lastMessages[chat.sender.username] = chat.content;
           return chat.sender;
         } else {
           if (alreadyEncounteredIds.includes(chat.receiver._id)) {
             return undefined;
           }
           alreadyEncounteredIds.push(chat.receiver._id);
+          lastMessages[chat.receiver.username] = chat.content;
           return chat.receiver;
         }
       });
@@ -42,6 +49,10 @@ const Chat = () => {
   );
 
   useEffect(() => {
+    if (!localStorage.getItem("token")) {
+      navigate("/");
+      return;
+    }
     const fetchData = async () => {
       try {
         const res = await fetch("http://localhost:5000/api/chats", {
@@ -101,17 +112,38 @@ const Chat = () => {
     fetchPeople();
   }, []);
 
+  const logout = () => {
+    localStorage.clear();
+    navigate("/");
+  };
+
   return (
     <div className="flex">
       <div className="w-3/12 border-r border-gray-800 h-dvh">
         <div className="fixed top-0 w-3/12">
-          <div className="flex justify-between p-2">
+          <div className="flex justify-between p-4">
             <div className="font-bold text-orange-600 ">LOGO</div>
-            <div
-              className={`bg-gray-200 border border-gray-100 text-sm rounded-full px-4 cursor-pointer  transition-colors ${isNewChat ? "bg-orange-300 hover:bg-amber-400" : ""}`}
-              onClick={() => setIsNewChat((prev) => !prev)}
-            >
-              New Chat
+            <div className="flex items-center gap-3 cursor-pointer">
+              <div
+                className={`bg-gray-200 border border-gray-100 text-sm rounded-full px-4 cursor-pointer  transition-colors ${isNewChat ? "bg-orange-300 hover:bg-amber-400" : ""}`}
+                onClick={() => setIsNewChat((prev) => !prev)}
+              >
+                New Chat
+              </div>
+              <div
+                onClick={() => setLogoutToggle((prev) => !prev)}
+                className="relative"
+              >
+                <BsThreeDotsVertical />
+                {logoutToggle && (
+                  <div
+                    onClick={logout}
+                    className="absolute p-2 border border-gray-200 rounded-lg bg-white z-999"
+                  >
+                    Logout
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -127,7 +159,7 @@ const Chat = () => {
         </div>
 
         {!isNewChat ? (
-          <div className="fixed top-25 w-3/12">
+          <div className="fixed top-25 w-3/12 overflow-y-auto h-dvh">
             {!chats ? (
               "Loading"
             ) : chats.length === 0 ? (
@@ -139,7 +171,7 @@ const Chat = () => {
                 ) : (
                   ""
                 )}
-                <div className="p-2 overflow-y-auto h-dvh">
+                <div className="p-2 ">
                   {filteredFriends.map((friend) => (
                     <div
                       className={`p-4 hover:bg-gray-200 rounded-lg cursor-pointer transition-colors ${activeChat?._id === friend._id ? "bg-gray-300" : ""}`}
@@ -153,6 +185,12 @@ const Chat = () => {
                       }
                     >
                       <h1>{friend.username}</h1>
+                      <p className="text-gray-700">
+                        {lastMessages[friend.username].substring(0, 40) +
+                          (lastMessages[friend.username].length > 40
+                            ? "..."
+                            : "")}
+                      </p>
                     </div>
                   ))}
                 </div>

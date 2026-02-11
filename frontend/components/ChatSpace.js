@@ -1,8 +1,9 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 const ChatSpace = ({ activeChat, userId, setChats }) => {
   const [message, setMessage] = useState("");
   const [listOfMessages, setListOfMessages] = useState([]);
+  const [isShort, setIsShort] = useState(false);
   const listRef = useRef(null);
 
   useEffect(() => {
@@ -29,13 +30,15 @@ const ChatSpace = ({ activeChat, userId, setChats }) => {
     if (activeChat) fetchData();
   }, [activeChat]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (listRef.current) {
+      setIsShort(listRef.current.scrollHeight <= listRef.current.clientHeight);
       listRef.current.scrollTop = listRef.current.scrollHeight;
     }
-  }, [listOfMessages]);
+  }, [listOfMessages, activeChat?.id]);
 
   const sendMessage = async () => {
+    if (message.trim() === "") return;
     try {
       const res = await fetch("http://localhost:5000/api/messages", {
         method: "POST",
@@ -63,13 +66,13 @@ const ChatSpace = ({ activeChat, userId, setChats }) => {
   return activeChat ? (
     <div className="w-9/12">
       <div className="">
-        <div className="pb-2 border-b border-gray-800 p-2 fixed w-full bg-white">
+        <div className="pb-2 border-b border-gray-800 p-2 fixed w-full bg-white z-20">
           <div>{activeChat.username}</div>
           <div className="text-gray-600">{activeChat.email}</div>
         </div>
         <div
           ref={listRef}
-          className="overflow-y-auto h-[90dvh] p-4 pt-25 flex flex-col"
+          className={`overflow-y-auto h-[90dvh] p-4 pt-25 flex flex-col`}
         >
           {listOfMessages.map((mess) => {
             return (
