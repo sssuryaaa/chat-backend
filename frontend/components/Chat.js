@@ -12,6 +12,7 @@ const Chat = () => {
   const [search, setSearch] = useState("");
   const [people, setPeople] = useState([]);
   const [logoutToggle, setLogoutToggle] = useState(false);
+  const [countOfUnreadMessages, setCountOfUnreadMessages] = useState({});
   const navigate = useNavigate();
   const lastMessages = {};
   const alreadyEncounteredIds = [];
@@ -23,14 +24,24 @@ const Chat = () => {
             return undefined;
           }
           alreadyEncounteredIds.push(chat.sender._id);
-          lastMessages[chat.sender.username] = chat.content;
+          if (lastMessages[chat.sender.username])
+            lastMessages[chat.sender.username]["message"] = chat.content;
+          else {
+            lastMessages[chat.sender.username] = {};
+            lastMessages[chat.sender.username]["message"] = chat.content;
+          }
           return chat.sender;
         } else {
           if (alreadyEncounteredIds.includes(chat.receiver._id)) {
             return undefined;
           }
           alreadyEncounteredIds.push(chat.receiver._id);
-          lastMessages[chat.receiver.username] = chat.content;
+          if (lastMessages[chat.receiver.username])
+            lastMessages[chat.receiver.username]["message"] = chat.content;
+          else {
+            lastMessages[chat.receiver.username] = {};
+            lastMessages[chat.receiver.username]["message"] = chat.content;
+          }
           return chat.receiver;
         }
       });
@@ -118,27 +129,32 @@ const Chat = () => {
   };
 
   return (
-    <div className="flex">
+    <div className="flex" onClick={() => setLogoutToggle(false)}>
       <div className="w-3/12 border-r border-gray-800 h-dvh">
-        <div className="fixed top-0 w-3/12">
-          <div className="flex justify-between p-4">
+        <div className="sticky top-2 h-[20dvh] bg-gray-200 rounded-lg m-2 pb-2">
+          <div className="flex justify-between p-4 items-center">
             <div className="font-bold text-orange-600 ">LOGO</div>
             <div className="flex items-center gap-3 cursor-pointer">
               <div
-                className={`bg-gray-200 border border-gray-100 text-sm rounded-full px-4 cursor-pointer  transition-colors ${isNewChat ? "bg-orange-300 hover:bg-amber-400" : ""}`}
+                className={`bg-gray-200 border border-gray-100 text-sm rounded-full px-4 py-2 cursor-pointer  transition-colors ${isNewChat ? "bg-orange-300 hover:bg-amber-400" : ""}`}
                 onClick={() => setIsNewChat((prev) => !prev)}
               >
                 New Chat
               </div>
               <div
-                onClick={() => setLogoutToggle((prev) => !prev)}
+                onClick={(e) => {
+                  setLogoutToggle((prev) => !prev);
+                  e.stopPropagation();
+                }}
                 className="relative"
               >
                 <BsThreeDotsVertical />
                 {logoutToggle && (
                   <div
-                    onClick={logout}
-                    className="absolute p-2 border border-gray-200 rounded-lg bg-white z-999"
+                    onClick={() => {
+                      logout();
+                    }}
+                    className="absolute p-2 border border-gray-200 rounded-lg bg-white z-999 right-0 top-5"
                   >
                     Logout
                   </div>
@@ -149,7 +165,7 @@ const Chat = () => {
 
           <div className="p-2">
             <input
-              className="w-full border border-gray-600 rounded-full p-2"
+              className="w-full border border-gray-600 bg-gray-100 rounded-full p-2"
               placeholder="Search"
               type="search"
               value={search}
@@ -159,7 +175,7 @@ const Chat = () => {
         </div>
 
         {!isNewChat ? (
-          <div className="fixed top-25 w-3/12 overflow-y-auto h-dvh">
+          <div className="box-border overflow-y-auto h-[75dvh] bg-gray-200 m-2 rounded-lg">
             {!chats ? (
               "Loading"
             ) : chats.length === 0 ? (
@@ -174,7 +190,7 @@ const Chat = () => {
                 <div className="p-2 ">
                   {filteredFriends.map((friend) => (
                     <div
-                      className={`p-4 hover:bg-gray-200 rounded-lg cursor-pointer transition-colors ${activeChat?._id === friend._id ? "bg-gray-300" : ""}`}
+                      className={`p-4 hover:bg-gray-300 my-2 rounded-lg cursor-pointer transition-colors ${activeChat?._id === friend._id ? "bg-gray-300" : ""}`}
                       key={friend._id}
                       onClick={() =>
                         setActiveChat({
@@ -185,9 +201,12 @@ const Chat = () => {
                       }
                     >
                       <h1>{friend.username}</h1>
-                      <p className="text-gray-700">
-                        {lastMessages[friend.username].substring(0, 40) +
-                          (lastMessages[friend.username].length > 40
+                      <p>
+                        {lastMessages[friend.username].message.substring(
+                          0,
+                          40,
+                        ) +
+                          (lastMessages[friend.username].message.length > 40
                             ? "..."
                             : "")}
                       </p>

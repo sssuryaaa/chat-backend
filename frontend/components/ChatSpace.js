@@ -105,7 +105,9 @@ const ChatSpace = ({ activeChat, userId, setChats }) => {
       </div>
     </div>
   ) : (
-    <h1>please select a chat to start chatting</h1>
+    <h1 className="w-6/12 m-auto font-bold text-2xl text-center text-gray-600">
+      please select a chat to start chatting
+    </h1>
   );
 };
 
