@@ -23,6 +23,25 @@ const ChatSpace = ({ activeChat, userId, setChats }) => {
         }
         const data = await res.json();
         setListOfMessages(data.messages);
+        data.messages.forEach(async (message) => {
+          if (message.sender._id === userId) return;
+          try {
+            const res = await fetch(
+              `http://localhost:5000/api/messages/${message._id}/viewed`,
+              {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${localStorage.getItem("token")}`,
+                },
+              },
+            );
+            if (!res.ok) {
+              throw new Error(res.status);
+            }
+          } catch (err) {
+            alert(err.message);
+          }
+        });
       } catch (err) {
         alert(err.message);
       }

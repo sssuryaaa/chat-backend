@@ -18,7 +18,27 @@ const server = http.createServer(app);
 
 connectDB();
 
-app.use(cors());
+const corsOptions = {
+  origin: "http://localhost:1234",
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+};
+
+app.use(cors(corsOptions));
+app.options(/.*/, cors(corsOptions));
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "http://localhost:1234");
+  res.header(
+    "Access-Control-Allow-Methods",
+    "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+  );
+  res.header("Access-Control-Allow-Headers", "Content-Type,Authorization");
+
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
+  return next();
+});
 app.use(express.json());
 
 app.post("/api/auth/signup", async (req, res) => {
@@ -142,7 +162,80 @@ app.post("/api/messages", httpAuth, async (req, res) => {
       .populate("sender", "username email")
       .populate("receiver", "username email");
 
+    // io.to(req.user.id).emit("message:new", fullMessage);
+    io.to(receiverId).emit("message:new", fullMessage);
+
     return res.status(201).json({ message: fullMessage });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
+app.patch("/api/messages/:messageId/viewed", httpAuth, async (req, res) => {
+  try {
+    const { messageId } = req.params;
+    if (!messageId) {
+      return res.status(400).json({ message: "Missing messageId" });
+    }
+
+    const updatedMessage = await Message.findByIdAndUpdate(
+      messageId,
+      { isViewed: true },
+      { new: true },
+    )
+      .populate("sender", "username email")
+      .populate("receiver", "username email");
+
+    if (!updatedMessage) {
+      return res.status(404).json({ message: "Message not found" });
+    }
+
+    io.to(String(updatedMessage.sender._id)).emit("message:viewed", {
+      messageId: updatedMessage._id,
+      isViewed: true,
+    });
+    io.to(String(updatedMessage.receiver._id)).emit("message:viewed", {
+      messageId: updatedMessage._id,
+      isViewed: true,
+    });
+
+    return res.json({ message: updatedMessage });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
+app.post("/api/messages/:messageId/viewed", httpAuth, async (req, res) => {
+  try {
+    const { messageId } = req.params;
+    if (!messageId) {
+      return res.status(400).json({ message: "Missing messageId" });
+    }
+
+    const updatedMessage = await Message.findByIdAndUpdate(
+      messageId,
+      { isViewed: true },
+      { new: true },
+    )
+      .populate("sender", "username email")
+      .populate("receiver", "username email");
+
+    if (!updatedMessage) {
+      return res.status(404).json({ message: "Message not found" });
+    }
+
+    // io.to(String(updatedMessage.sender._id)).emit("message:viewed", {
+    //   messageId: updatedMessage._id,
+    //   isViewed: true,
+    // });
+    io.to(String(updatedMessage.receiver._id)).emit("message:viewed", {
+      messageId: updatedMessage._id,
+      isViewed: false,
+    });
+
+    return res.json({ message: updatedMessage });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: "Server error" });

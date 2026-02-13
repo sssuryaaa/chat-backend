@@ -3,6 +3,7 @@ import Newchat from "./Newchat";
 import ChatSpace from "./ChatSpace";
 import { BsThreeDotsVertical } from "react-icons/bs";
 import { useNavigate } from "react-router";
+import { io } from "socket.io-client";
 
 const Chat = () => {
   const [chats, setChats] = useState(null); // List of chats
@@ -24,24 +25,18 @@ const Chat = () => {
             return undefined;
           }
           alreadyEncounteredIds.push(chat.sender._id);
-          if (lastMessages[chat.sender.username])
-            lastMessages[chat.sender.username]["message"] = chat.content;
-          else {
+          if (!lastMessages[chat.sender.username])
             lastMessages[chat.sender.username] = {};
-            lastMessages[chat.sender.username]["message"] = chat.content;
-          }
+          lastMessages[chat.sender.username]["message"] = chat.content;
           return chat.sender;
         } else {
           if (alreadyEncounteredIds.includes(chat.receiver._id)) {
             return undefined;
           }
           alreadyEncounteredIds.push(chat.receiver._id);
-          if (lastMessages[chat.receiver.username])
-            lastMessages[chat.receiver.username]["message"] = chat.content;
-          else {
+          if (!lastMessages[chat.receiver.username])
             lastMessages[chat.receiver.username] = {};
-            lastMessages[chat.receiver.username]["message"] = chat.content;
-          }
+          lastMessages[chat.receiver.username]["message"] = chat.content;
           return chat.receiver;
         }
       });
@@ -121,7 +116,46 @@ const Chat = () => {
     fetchData();
     fetchId();
     fetchPeople();
+
+    const socket = io("http://localhost:5000", {
+      auth: { token: localStorage.getItem("token") },
+    });
+
+    const onNew = (msg) => {
+      // update chat list/messages state
+      setChats((prev) => [...prev, msg]);
+      console.log("message:new", msg);
+    };
+
+    const onViewed = ({ messageId, isViewed }) => {
+      // mark message viewed in state
+
+      console.log("message:viewed", messageId, isViewed);
+    };
+
+    socket.on("message:new", onNew);
+    socket.on("message:viewed", onViewed);
+
+    return () => {
+      socket.off("message:new", onNew);
+      socket.off("message:viewed", onViewed);
+      socket.disconnect();
+    };
   }, []);
+
+  useEffect(() => {
+    if (!chats) return;
+    const unReadMessages = chats.filter(
+      (chat) => chat.receiver._id === userId && !chat.isViewed,
+    );
+    const unReadMessagesOfEachUser = {};
+    unReadMessages.forEach((element) => {
+      unReadMessagesOfEachUser[element.sender._id]
+        ? unReadMessagesOfEachUser[element.sender._id]++
+        : (unReadMessagesOfEachUser[element.sender._id] = 1);
+    });
+    setCountOfUnreadMessages(unReadMessagesOfEachUser);
+  }, [chats]);
 
   const logout = () => {
     localStorage.clear();
@@ -192,24 +226,37 @@ const Chat = () => {
                     <div
                       className={`p-4 hover:bg-gray-300 my-2 rounded-lg cursor-pointer transition-colors ${activeChat?._id === friend._id ? "bg-gray-300" : ""}`}
                       key={friend._id}
-                      onClick={() =>
+                      onClick={() => {
                         setActiveChat({
                           _id: friend._id,
                           username: friend.username,
                           email: friend.email,
-                        })
-                      }
+                        });
+                        setCountOfUnreadMessages((prev) => {
+                          delete prev[friend._id];
+                          return prev;
+                        });
+                      }}
                     >
                       <h1>{friend.username}</h1>
-                      <p>
-                        {lastMessages[friend.username].message.substring(
-                          0,
-                          40,
-                        ) +
-                          (lastMessages[friend.username].message.length > 40
-                            ? "..."
-                            : "")}
-                      </p>
+                      <div className={`flex justify-between items-center }`}>
+                        <div
+                          className={`${countOfUnreadMessages[friend._id] ? "text-black" : "text-gray-800"}`}
+                        >
+                          {lastMessages[friend.username].message.substring(
+                            0,
+                            40,
+                          ) +
+                            (lastMessages[friend.username].message.length > 40
+                              ? "..."
+                              : "")}
+                        </div>
+                        {countOfUnreadMessages[friend._id] && (
+                          <div className="w-5 h-5 rounded-full bg-orange-400 text-[12px] text-center">
+                            {countOfUnreadMessages[friend._id]}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
