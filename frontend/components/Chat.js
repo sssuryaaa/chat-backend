@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Newchat from "./Newchat";
 import ChatSpace from "./ChatSpace";
 import { BsThreeDotsVertical } from "react-icons/bs";
@@ -14,32 +14,44 @@ const Chat = () => {
   const [people, setPeople] = useState([]);
   const [logoutToggle, setLogoutToggle] = useState(false);
   const [countOfUnreadMessages, setCountOfUnreadMessages] = useState({});
+  const [listOfMessages, setListOfMessages] = useState([]);
+  const activeChatRef = useRef(activeChat);
   const navigate = useNavigate();
   const lastMessages = {};
   const alreadyEncounteredIds = [];
   const friends = !chats
     ? []
-    : chats.map((chat) => {
-        if (chat.receiver._id === userId) {
-          if (alreadyEncounteredIds.includes(chat.sender._id)) {
-            return undefined;
+    : chats
+        .slice()
+        .reverse()
+        .map((chat) => {
+          if (chat.receiver._id === userId) {
+            if (alreadyEncounteredIds.includes(chat.sender._id)) {
+              return undefined;
+            }
+            alreadyEncounteredIds.push(chat.sender._id);
+            return chat.sender;
+          } else {
+            if (alreadyEncounteredIds.includes(chat.receiver._id)) {
+              return undefined;
+            }
+            alreadyEncounteredIds.push(chat.receiver._id);
+            return chat.receiver;
           }
-          alreadyEncounteredIds.push(chat.sender._id);
-          if (!lastMessages[chat.sender.username])
-            lastMessages[chat.sender.username] = {};
-          lastMessages[chat.sender.username]["message"] = chat.content;
-          return chat.sender;
-        } else {
-          if (alreadyEncounteredIds.includes(chat.receiver._id)) {
-            return undefined;
-          }
-          alreadyEncounteredIds.push(chat.receiver._id);
-          if (!lastMessages[chat.receiver.username])
-            lastMessages[chat.receiver.username] = {};
-          lastMessages[chat.receiver.username]["message"] = chat.content;
-          return chat.receiver;
-        }
-      });
+        });
+
+  if (chats) {
+    chats.forEach((chat) => {
+      if (chat.receiver._id === userId) {
+        if (!lastMessages[chat.sender._id]) lastMessages[chat.sender._id] = {};
+        lastMessages[chat.sender._id] = chat.content;
+      } else {
+        if (!lastMessages[chat.receiver._id])
+          lastMessages[chat.receiver._id] = {};
+        lastMessages[chat.receiver._id] = chat.content;
+      }
+    });
+  }
   const actualFriends = friends.filter((friend) => friend !== undefined);
   const filteredFriends = actualFriends.filter((friend) => {
     return friend.username
@@ -53,6 +65,10 @@ const Chat = () => {
         .includes(search.toLocaleLowerCase().trim()) &&
       !actualFriends.map((fr) => fr.username).includes(person.username),
   );
+
+  useEffect(() => {
+    activeChatRef.current = activeChat;
+  }, [activeChat]);
 
   useEffect(() => {
     if (!localStorage.getItem("token")) {
@@ -72,7 +88,7 @@ const Chat = () => {
           throw new Error(res.status);
         }
         const data = await res.json();
-        setChats(data.messages.reverse());
+        setChats(data.messages);
       } catch (err) {
         alert(err.message);
       }
@@ -121,16 +137,41 @@ const Chat = () => {
       auth: { token: localStorage.getItem("token") },
     });
 
-    const onNew = (msg) => {
+    const onNew = async (msg) => {
       // update chat list/messages state
       setChats((prev) => [...prev, msg]);
-      console.log("message:new", msg);
+      if (
+        activeChatRef.current &&
+        activeChatRef.current._id === msg.sender._id
+      ) {
+        setListOfMessages((prev) => [...prev, msg]);
+        try {
+          const res = await fetch(
+            `http://localhost:5000/api/messages/${msg._id}/viewed`,
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+              },
+            },
+          );
+          if (!res.ok) throw new Error(res.status);
+        } catch (err) {
+          alert(err.message);
+        }
+      }
+      // console.log("message:new", msg);
     };
 
     const onViewed = ({ messageId, isViewed }) => {
       // mark message viewed in state
-
-      console.log("message:viewed", messageId, isViewed);
+      setChats((prev) => {
+        return prev.map((ele) => {
+          if (ele._id === messageId) ele.isViewed = isViewed;
+          return ele;
+        });
+      });
+      // console.log("message:viewed", messageId, isViewed);
     };
 
     socket.on("message:new", onNew);
@@ -146,7 +187,10 @@ const Chat = () => {
   useEffect(() => {
     if (!chats) return;
     const unReadMessages = chats.filter(
-      (chat) => chat.receiver._id === userId && !chat.isViewed,
+      (chat) =>
+        chat.receiver._id === userId &&
+        !chat.isViewed &&
+        (activeChat ? activeChat._id !== chat.sender._id : true),
     );
     const unReadMessagesOfEachUser = {};
     unReadMessages.forEach((element) => {
@@ -161,6 +205,8 @@ const Chat = () => {
     localStorage.clear();
     navigate("/");
   };
+
+  console.log(chats);
 
   return (
     <div className="flex" onClick={() => setLogoutToggle(false)}>
@@ -233,8 +279,9 @@ const Chat = () => {
                           email: friend.email,
                         });
                         setCountOfUnreadMessages((prev) => {
-                          delete prev[friend._id];
-                          return prev;
+                          const next = { ...prev };
+                          delete next[friend._id];
+                          return next;
                         });
                       }}
                     >
@@ -243,13 +290,8 @@ const Chat = () => {
                         <div
                           className={`${countOfUnreadMessages[friend._id] ? "text-black" : "text-gray-800"}`}
                         >
-                          {lastMessages[friend.username].message.substring(
-                            0,
-                            40,
-                          ) +
-                            (lastMessages[friend.username].message.length > 40
-                              ? "..."
-                              : "")}
+                          {lastMessages[friend._id].substring(0, 40) +
+                            (lastMessages[friend._id].length > 40 ? "..." : "")}
                         </div>
                         {countOfUnreadMessages[friend._id] && (
                           <div className="w-5 h-5 rounded-full bg-orange-400 text-[12px] text-center">
@@ -286,7 +328,13 @@ const Chat = () => {
           />
         )}
       </div>
-      <ChatSpace activeChat={activeChat} userId={userId} setChats={setChats} />
+      <ChatSpace
+        activeChat={activeChat}
+        userId={userId}
+        setChats={setChats}
+        listOfMessages={listOfMessages}
+        setListOfMessages={setListOfMessages}
+      />
     </div>
   );
 };

@@ -14,7 +14,7 @@ const socketHandler = (io) => {
       });
 
       io.to(receiverId).emit("receive-message", message);
-      io.to(socket.user.id).emit("receive-message", message);
+      // io.to(socket.user.id).emit("receive-message", message);
     });
 
     socket.on("disconnect", () => {

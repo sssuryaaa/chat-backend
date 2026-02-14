@@ -1,8 +1,19 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  IoCheckmark,
+  IoCheckmarkDone,
+  IoCheckmarkDoneSharp,
+} from "react-icons/io5";
 
-const ChatSpace = ({ activeChat, userId, setChats }) => {
+const ChatSpace = ({
+  activeChat,
+  userId,
+  setChats,
+  listOfMessages,
+  setListOfMessages,
+}) => {
   const [message, setMessage] = useState("");
-  const [listOfMessages, setListOfMessages] = useState([]);
+  // const [listOfMessages, setListOfMessages] = useState([]);
   const [isShort, setIsShort] = useState(false);
   const listRef = useRef(null);
 
@@ -25,6 +36,7 @@ const ChatSpace = ({ activeChat, userId, setChats }) => {
         setListOfMessages(data.messages);
         data.messages.forEach(async (message) => {
           if (message.sender._id === userId) return;
+          if (message.isViewed) return;
           try {
             const res = await fetch(
               `http://localhost:5000/api/messages/${message._id}/viewed`,
@@ -77,7 +89,7 @@ const ChatSpace = ({ activeChat, userId, setChats }) => {
       const data = await res.json();
       setListOfMessages([...listOfMessages, data.message]);
       setMessage("");
-      setChats((prev) => [data.message, ...prev]);
+      setChats((prev) => [...prev, data.message]);
     } catch (err) {
       alert(err.message);
     }
@@ -99,7 +111,15 @@ const ChatSpace = ({ activeChat, userId, setChats }) => {
                 className={`${mess?.sender?._id === userId ? " ml-auto bg-orange-400" : "bg-gray-200"} ${mess?.sender === userId ? " ml-auto bg-orange-400" : "bg-gray-200"} p-3 rounded-sm w-max text-black my-1 max-w-7/12 wrap-break-word`}
                 key={mess._id}
               >
-                {mess.content}
+                <div>{mess.content}</div>
+                <div className="text-right">
+                  {mess.sender._id === userId &&
+                    (mess.isViewed ? (
+                      <IoCheckmarkDoneSharp className="text-blue-500" />
+                    ) : (
+                      <IoCheckmark />
+                    ))}
+                </div>
               </div>
             );
           })}

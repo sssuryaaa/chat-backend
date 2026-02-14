@@ -191,13 +191,13 @@ app.patch("/api/messages/:messageId/viewed", httpAuth, async (req, res) => {
       return res.status(404).json({ message: "Message not found" });
     }
 
-    io.to(String(updatedMessage.sender._id)).emit("message:viewed", {
-      messageId: updatedMessage._id,
-      isViewed: true,
-    });
+    // io.to(String(updatedMessage.sender._id)).emit("message:viewed", {
+    //   messageId: updatedMessage._id,
+    //   isViewed: true,
+    // });
     io.to(String(updatedMessage.receiver._id)).emit("message:viewed", {
       messageId: updatedMessage._id,
-      isViewed: true,
+      isViewed: false,
     });
 
     return res.json({ message: updatedMessage });
@@ -226,13 +226,13 @@ app.post("/api/messages/:messageId/viewed", httpAuth, async (req, res) => {
       return res.status(404).json({ message: "Message not found" });
     }
 
-    // io.to(String(updatedMessage.sender._id)).emit("message:viewed", {
-    //   messageId: updatedMessage._id,
-    //   isViewed: true,
-    // });
+    io.to(String(updatedMessage.sender._id)).emit("message:viewed", {
+      messageId: updatedMessage._id,
+      isViewed: true,
+    });
     io.to(String(updatedMessage.receiver._id)).emit("message:viewed", {
       messageId: updatedMessage._id,
-      isViewed: false,
+      isViewed: true,
     });
 
     return res.json({ message: updatedMessage });
