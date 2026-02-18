@@ -95,6 +95,8 @@ app.post("/api/auth/login", async (req, res) => {
       { expiresIn: "7d" },
     );
 
+    await User.findByIdAndUpdate(user._id, { isOnline: true });
+
     return res.json({
       token,
       user: { id: user._id, username: user.username, email: user.email },
@@ -105,8 +107,23 @@ app.post("/api/auth/login", async (req, res) => {
   }
 });
 
+app.post("/api/auth/logout", httpAuth, async (req, res) => {
+  try {
+    await User.findByIdAndUpdate(req.user.id, { isOnline: false });
+    return res.json({ message: "Logged out" });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
 app.get("/api/chats", httpAuth, async (req, res) => {
   try {
+    await Message.updateMany(
+      { receiver: req.user.id, status: "sent" },
+      { $set: { status: "delivered" } },
+    );
+
     const messages = await Message.find({
       $or: [{ sender: req.user.id }, { receiver: req.user.id }],
     })
@@ -216,7 +233,7 @@ app.post("/api/messages/:messageId/viewed", httpAuth, async (req, res) => {
 
     const updatedMessage = await Message.findByIdAndUpdate(
       messageId,
-      { isViewed: true },
+      { status: "read" },
       { new: true },
     )
       .populate("sender", "username email")
@@ -228,13 +245,52 @@ app.post("/api/messages/:messageId/viewed", httpAuth, async (req, res) => {
 
     io.to(String(updatedMessage.sender._id)).emit("message:viewed", {
       messageId: updatedMessage._id,
-      isViewed: true,
+      statusOfMessage: updatedMessage.status,
+      receiverId: updatedMessage.receiver._id,
     });
-    io.to(String(updatedMessage.receiver._id)).emit("message:viewed", {
-      messageId: updatedMessage._id,
-      isViewed: true,
-    });
+    // io.to(String(updatedMessage.receiver._id)).emit("message:viewed", {
+    //   messageId: updatedMessage._id,
+    //   statusOfMessage: updatedMessage.status,
+    // });
 
+    return res.json({ message: updatedMessage });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
+app.post("/api/messages/:messageId/delivered", httpAuth, async (req, res) => {
+  try {
+    const { messageId } = req.params;
+    if (!messageId) {
+      return res.status(400).json({ message: "Missing messageId" });
+    }
+
+    const updatedMessage = await Message.findOneAndUpdate(
+      { _id: messageId, status: "sent" },
+      { $set: { status: "delivered" } },
+      { new: true },
+    )
+      .populate("sender", "username email")
+      .populate("receiver", "username email");
+
+    if (!updatedMessage) {
+      const existingMessage = await Message.findById(messageId)
+        .populate("sender", "username email")
+        .populate("receiver", "username email");
+
+      if (!existingMessage) {
+        return res.status(404).json({ message: "Message not found" });
+      }
+      return res.json({ message: existingMessage });
+    }
+
+    io.to(String(updatedMessage.sender._id)).emit("message:viewed", {
+      messageId: updatedMessage._id,
+      statusOfMessage: updatedMessage.status,
+      receiverId: updatedMessage.receiver._id,
+    });
     return res.json({ message: updatedMessage });
   } catch (err) {
     console.error(err);
@@ -260,6 +316,8 @@ app.get("/api/userId", httpAuth, (req, res) => {
 
 const io = new Server(server, {
   cors: { origin: "*" },
+  pingInterval: 5000,
+  pingTimeout: 10000,
 });
 
 // Socket auth middleware

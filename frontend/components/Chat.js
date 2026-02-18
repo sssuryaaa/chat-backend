@@ -4,6 +4,7 @@ import ChatSpace from "./ChatSpace";
 import { BsThreeDotsVertical } from "react-icons/bs";
 import { useNavigate } from "react-router";
 import { io } from "socket.io-client";
+import { IoCheckmark, IoCheckmarkDone } from "react-icons/io5";
 
 const Chat = () => {
   const [chats, setChats] = useState(null); // List of chats
@@ -44,11 +45,11 @@ const Chat = () => {
     chats.forEach((chat) => {
       if (chat.receiver._id === userId) {
         if (!lastMessages[chat.sender._id]) lastMessages[chat.sender._id] = {};
-        lastMessages[chat.sender._id] = chat.content;
+        lastMessages[chat.sender._id] = chat;
       } else {
         if (!lastMessages[chat.receiver._id])
           lastMessages[chat.receiver._id] = {};
-        lastMessages[chat.receiver._id] = chat.content;
+        lastMessages[chat.receiver._id] = chat;
       }
     });
   }
@@ -159,18 +160,44 @@ const Chat = () => {
         } catch (err) {
           alert(err.message);
         }
+      } else {
+        try {
+          const res = await fetch(
+            `http://localhost:5000/api/messages/${msg._id}/delivered`,
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+              },
+            },
+          );
+          if (!res.ok) throw new Error(res.status);
+          const data = await res.json();
+        } catch (err) {
+          alert(err.message);
+        }
       }
       // console.log("message:new", msg);
     };
 
-    const onViewed = ({ messageId, isViewed }) => {
+    const onViewed = ({ messageId, statusOfMessage, receiverId }) => {
       // mark message viewed in state
       setChats((prev) => {
         return prev.map((ele) => {
-          if (ele._id === messageId) ele.isViewed = isViewed;
+          if (ele._id === messageId) ele.status = statusOfMessage;
           return ele;
         });
       });
+      if (activeChatRef.current && activeChatRef.current._id === receiverId) {
+        setListOfMessages((prev) => {
+          return prev.map((message) => {
+            if (message._id === messageId) {
+              message.status = statusOfMessage;
+            }
+            return message;
+          });
+        });
+      }
       // console.log("message:viewed", messageId, isViewed);
     };
 
@@ -189,7 +216,7 @@ const Chat = () => {
     const unReadMessages = chats.filter(
       (chat) =>
         chat.receiver._id === userId &&
-        !chat.isViewed &&
+        chat.status !== "read" &&
         (activeChat ? activeChat._id !== chat.sender._id : true),
     );
     const unReadMessagesOfEachUser = {};
@@ -201,12 +228,23 @@ const Chat = () => {
     setCountOfUnreadMessages(unReadMessagesOfEachUser);
   }, [chats]);
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      const res = await fetch("http://localhost:5000/api/auth/logout", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      if (!res.ok) throw new Error(res.status);
+    } catch (err) {
+      alert(err.message);
+    }
     localStorage.clear();
     navigate("/");
   };
 
-  console.log(chats);
+  console.log(lastMessages);
 
   return (
     <div className="flex" onClick={() => setLogoutToggle(false)}>
@@ -286,12 +324,29 @@ const Chat = () => {
                       }}
                     >
                       <h1>{friend.username}</h1>
-                      <div className={`flex justify-between items-center }`}>
+                      <div>
                         <div
-                          className={`${countOfUnreadMessages[friend._id] ? "text-black" : "text-gray-800"}`}
+                          className={`${countOfUnreadMessages[friend._id] ? "text-black" : "text-gray-800"} flex justify-normal items-center `}
                         >
-                          {lastMessages[friend._id].substring(0, 40) +
-                            (lastMessages[friend._id].length > 40 ? "..." : "")}
+                          <div>
+                            {lastMessages[friend._id].receiver._id ===
+                            friend._id ? (
+                              lastMessages[friend._id].status === "sent" ? (
+                                <IoCheckmark />
+                              ) : lastMessages[friend._id].status ===
+                                "delivered" ? (
+                                <IoCheckmarkDone />
+                              ) : (
+                                <IoCheckmarkDone className="text-blue-400" />
+                              )
+                            ) : null}
+                          </div>
+                          <div>
+                            {lastMessages[friend._id].content.substring(0, 40) +
+                              (lastMessages[friend._id].length > 40
+                                ? "..."
+                                : "")}
+                          </div>
                         </div>
                         {countOfUnreadMessages[friend._id] && (
                           <div className="w-5 h-5 rounded-full bg-orange-400 text-[12px] text-center">

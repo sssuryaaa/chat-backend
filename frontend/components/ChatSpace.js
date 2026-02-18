@@ -36,7 +36,7 @@ const ChatSpace = ({
         setListOfMessages(data.messages);
         data.messages.forEach(async (message) => {
           if (message.sender._id === userId) return;
-          if (message.isViewed) return;
+          if (message.status === "read") return;
           try {
             const res = await fetch(
               `http://localhost:5000/api/messages/${message._id}/viewed`,
@@ -114,8 +114,10 @@ const ChatSpace = ({
                 <div>{mess.content}</div>
                 <div className="text-right">
                   {mess.sender._id === userId &&
-                    (mess.isViewed ? (
+                    (mess.status === "read" ? (
                       <IoCheckmarkDoneSharp className="text-blue-500" />
+                    ) : mess.status === "delivered" ? (
+                      <IoCheckmarkDoneSharp />
                     ) : (
                       <IoCheckmark />
                     ))}

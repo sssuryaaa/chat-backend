@@ -1,8 +1,11 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useNavigate } from "react-router";
 
 const Home = () => {
   const navigate = useNavigate();
+  useEffect(() => {
+    if (localStorage.getItem("token")) navigate("/chat");
+  }, []);
   return (
     <div className="flex">
       <div className="w-2/4 h-dvh flex items-center justify-center font-bold text-3xl">
